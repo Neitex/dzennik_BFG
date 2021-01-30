@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">"Дзённiк "</string>
+    <string name="main_page_name">Главная страница</string>
+    <string name="timetable_name">Расписание</string>
+    <string name="login_field_hint">Логин</string>
+    <string name="password_field_hint">Пароль</string>
+    <string name="long_login_error">Логин не должен быть длинее 30 символов</string>
+    <string name="login_button">Войти</string>
+    <string name="wrong_auth">Сервер не принял ваши данные для входа. Проверьте логин/пароль</string>
+    <string name="ssl_handshake_error">Во время подключения к серверу произошла ошибка</string>
+    <string name="timeout">Сервер не ответил. Попробуйте позже</string>
+    <string name="unknown_error">Произошла неизвестная ошибка. Проверьте своё соединение или попробуйте позже</string>
+    <string name="settings_tab_name">Настройки</string>
+    <string name="token_invalid">Сервер не принял Ваш токен. Вы можете запросить новый открыв настройки и перезайдя в свой аккаунт.</string>
+    <string name="got_token">Получен токен</string>
+    <string name="token_invalid_login">Сервер не принял ваш токен. Вы можете попробовать очистить данные приложения и перезайти.</string>
+    <string name="today_lessons">Уроки сегодня:</string>
+    <string name="no_lessons_today">У Вас нет уроков сегодня. Отдохните :)</string>
+    <string name="upcoming_lessons">"Домашнее задание на "</string>
+    <string name="no_lessons_tommorow">У Вас нет уроков завтра. Отдохните :)</string>
+    <string name="tommorow">завтра</string>
+    <string name="monday">понедельник</string>
+</resources>
