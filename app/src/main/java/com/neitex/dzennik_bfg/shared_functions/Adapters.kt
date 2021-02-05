@@ -11,9 +11,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.facebook.drawee.view.SimpleDraweeView
 import com.neitex.dzennik_bfg.R
 import com.neitex.dzennik_bfg.changePupil
-import com.neitex.dzennik_bfg.fragments.changePupilsDialog
+import com.neitex.dzennik_bfg.fragments.ChangePupilsDialog
 import org.json.JSONArray
-import java.io.File
 
 data class Lesson(
     val lessonName: String? = "aaaaa",
@@ -21,8 +20,8 @@ data class Lesson(
     val lessonHometask: String? = null
 )
 
-class currentDayAdapter(private val dataSet: Array<Lesson?>?, private val noLessons: String) :
-    RecyclerView.Adapter<currentDayAdapter.ViewHolder>() { //нагло спизжено с d.android.com
+class CurrentDayAdapter(private val dataSet: Array<Lesson?>?, private val noLessons: String) :
+    RecyclerView.Adapter<CurrentDayAdapter.ViewHolder>() {
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
         val lessonNameTextView: TextView
@@ -34,7 +33,6 @@ class currentDayAdapter(private val dataSet: Array<Lesson?>?, private val noLess
         }
     }
 
-    // Create new views (invoked by the layout manager)
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(viewGroup.context)
             .inflate(R.layout.current_day_lesson_row, viewGroup, false)
@@ -42,7 +40,6 @@ class currentDayAdapter(private val dataSet: Array<Lesson?>?, private val noLess
         return ViewHolder(view)
     }
 
-    // Replace the contents of a view (invoked by the layout manager)
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
         if (dataSet != null) {
             if (dataSet.isNotEmpty()) {
@@ -60,24 +57,27 @@ class currentDayAdapter(private val dataSet: Array<Lesson?>?, private val noLess
         }
     }
 
-    // Return the size of your dataset (invoked by the layout manager)
     override fun getItemCount(): Int {
-        if (dataSet == null) {
-            return 0
-        } else if (dataSet.isEmpty()) {
-            return 1
-        } else {
-            return dataSet.size
+        return when {
+            dataSet == null -> {
+                0
+            }
+            dataSet.isEmpty() -> {
+                1
+            }
+            else -> {
+                dataSet.size
+            }
         }
     }
 
 }
 
-class upcomingDayAdapter(
+class UpcomingDayAdapter(
     private val dataSet: Array<Lesson?>?,
     private val noLessons: String
 ) :
-    RecyclerView.Adapter<upcomingDayAdapter.ViewHolder>() { //нагло спизжено с d.android.com
+    RecyclerView.Adapter<UpcomingDayAdapter.ViewHolder>() {
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
         val lessonNameTextView: TextView
@@ -89,7 +89,6 @@ class upcomingDayAdapter(
         }
     }
 
-    // Create new views (invoked by the layout manager)
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(viewGroup.context)
             .inflate(R.layout.upcoming_day_lesson_row, viewGroup, false)
@@ -97,7 +96,6 @@ class upcomingDayAdapter(
         return ViewHolder(view)
     }
 
-    // Replace the contents of a view (invoked by the layout manager)
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
         if (dataSet != null) {
             if (dataSet.isNotEmpty()) {
@@ -110,24 +108,26 @@ class upcomingDayAdapter(
         }
     }
 
-    // Return the size of your dataset (invoked by the layout manager)
     override fun getItemCount(): Int {
-        if (dataSet == null) {
-            return 0
-        } else if (dataSet.isEmpty()) {
-            return 1
-        } else {
-            return dataSet.size
+        return when {
+            dataSet == null -> {
+                0
+            }
+            dataSet.isEmpty() -> {
+                1
+            }
+            else -> {
+                dataSet.size
+            }
         }
     }
 }
 
-class changePupilsAdapter(
+class ChangePupilsAdapter(
     private val dataSet: JSONArray,
-    val filesDir: File?,
-    val bottomSheet: changePupilsDialog
+    private val bottomSheet: ChangePupilsDialog
 ) :
-    RecyclerView.Adapter<changePupilsAdapter.ViewHolder>() { //нагло спизжено с d.android.com
+    RecyclerView.Adapter<ChangePupilsAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val pupilName: TextView
@@ -141,14 +141,12 @@ class changePupilsAdapter(
         }
     }
 
-    // Create new views (invoked by the layout manager)
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(viewGroup.context)
             .inflate(R.layout.change_pupil_row, viewGroup, false)
         return ViewHolder(view)
     }
 
-    // Replace the contents of a view (invoked by the layout manager)
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
         if (dataSet.getJSONObject(position)?.get("photo").toString() != null.toString()) {
             val photo = viewHolder.pupilAvatar
@@ -173,7 +171,6 @@ class changePupilsAdapter(
         }
     }
 
-    // Return the size of your dataset (invoked by the layout manager)
     override fun getItemCount(): Int {
         return dataSet.length()
     }

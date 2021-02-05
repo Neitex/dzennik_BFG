@@ -8,76 +8,78 @@ import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.github.kittinunf.fuel.Fuel
-import com.github.kittinunf.fuel.core.Headers
-import com.github.kittinunf.fuel.coroutines.awaitObjectResponseResult
+import com.github.kittinunf.fuel.core.*
+import com.github.kittinunf.fuel.json.FuelJson
 import com.github.kittinunf.fuel.json.jsonDeserializer
 import com.github.kittinunf.result.Result
 import com.neitex.dzennik_bfg.R
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.InterruptedIOException
 import java.net.InetAddress
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.TimeoutException
+import javax.net.ssl.SSLException
+import javax.net.ssl.SSLHandshakeException
+import kotlin.math.abs
 
 
-suspend fun GetSummary(
+suspend fun getSummary(
     userID: String,
     preferences: SharedPreferences,
-    date: String,
-    view: View
-): JSONObject? {
+    date: String
+): JSONObject {
     val token = preferences.all["token"]
     val apiString = "https://schools.by/subdomain-api/pupil/$userID/daybook/day/$date"
     var exceptions = 0
-    var kill = false
-    var summary: JSONObject? = null
-    try {
-        while (exceptions in 0..1337 && !kill) {
-            val response = Fuel.get(apiString).header(Headers.AUTHORIZATION, "Token $token")
-                .timeout(150).awaitObjectResponseResult(jsonDeserializer())
-            if (response.third.component2() == null) {
-                if (response.second.statusCode == 401) {
-                    makeSnackbar(
-                        view,
-                        view.context.resources.getString(R.string.token_invalid)
+    loop@ while (exceptions in 0..4) {
+        val response = Fuel.get(apiString).header(Headers.AUTHORIZATION, "Token $token")
+            .timeout(150).awaitResponseResult(jsonDeserializer())
+        when (response.third) {
+            is Result.Success -> {
+                Log.d("dev", response.third.component1()?.obj().toString())
+                return response.third.component1()?.obj()!!
+            }
+            is Result.Failure -> {
+                if (response.third.component2()?.exception is SSLException) {
+                    Log.d(
+                        "summarySSL",
+                        "Caught SSLException at getWeek, trying again (" + abs(4 - exceptions) + " tries left)"
                     )
-                    summary = null
-                    break
-                } else if (response.second.statusCode == 200) {
-                    kill = true
-                    summary = response.third.component1()?.obj()
-                    break
+                    exceptions++
+                    if (exceptions > 4) {
+                        throw SSLException("Something wrong with SSL in getWeek")
+                    }
+                    continue@loop
+                } else if (response.third.component2()?.causedByInterruption == true) {
+                    exceptions++
+                    if (exceptions > 2)
+                        throw InterruptedIOException(response.third.component2()?.cause.toString())
+                } else if (response.third.component2()?.cause is SocketTimeoutException) {
+                    throw TimeoutException()
                 }
             }
-            exceptions++
         }
-    } catch (e: Exception) {
-        makeSnackbar(
-            view,
-            e.toString(),
-            Color.parseColor("#B00020")
-        )
-        Sentry.captureMessage("Unknown exception: $e", SentryLevel.ERROR)
+        Log.d("dev", "Request failed. Cause: " + response.third.component2()?.exception.toString())
+        exceptions++
     }
-    if (!kill) {
-        makeSnackbar(
-            view,
-            view.context.resources.getString(R.string.unknown_error)
-        )
 
-    }
-    return summary
+    return JSONObject()
 
 }
 
 fun saveAccountInfo(token: String, view: View) {
     val userInfoApi = "https://schools.by/subdomain-api/user/current"
-    var Exceptions = 0
+    var exceptions = 0
     try {
-        while (Exceptions in 0..3) {
+        while (exceptions in 0..3) {
             Fuel.get(userInfoApi).header(Headers.AUTHORIZATION, "Token $token")
-                .responseString { request, response, result ->
+                .responseString { _, response, result ->
                     when (result) {
                         is Result.Failure -> {
                             if (response.statusCode == 401) {
@@ -85,9 +87,12 @@ fun saveAccountInfo(token: String, view: View) {
                                     view.findViewById(R.id.layout_bruh),
                                     view.resources.getString(R.string.token_invalid_login)
                                 )
-                                Exceptions = -2
+                                exceptions = -2
                             }
-                            Sentry.captureMessage("Server rejected token in saveAccountInfo", SentryLevel.WARNING)
+                            Sentry.captureMessage(
+                                "Server rejected token in saveAccountInfo",
+                                SentryLevel.WARNING
+                            )
                         }
                         is Result.Success -> {
                             val data = JSONObject(String(response.data))
@@ -103,12 +108,12 @@ fun saveAccountInfo(token: String, view: View) {
                                 .apply()
                             preferences.edit()
                                 .putString("id", data.get("id").toString()).apply()
-                            Exceptions = -11
+                            exceptions = -11
                         }
                     }
 
                 }.join()
-            Exceptions++
+            exceptions++
         }
     } catch (e: Exception) {
         makeSnackbar(
@@ -123,24 +128,41 @@ suspend fun findPupils(token: String, userID: String, view: View): JSONArray? {
     val userInfoApi = "https://schools.by/subdomain-api/parent/$userID/pupils"
     var exceptions = 0
     var pupils: JSONArray? = JSONArray()
-    var kill: Boolean = false
-
+    var kill = false
     try {
-        while (exceptions in 0..1337 && !kill) {
-            val response = Fuel.get(userInfoApi).header(Headers.AUTHORIZATION, "Token $token")
-                .timeout(150).awaitObjectResponseResult(jsonDeserializer())
-            if (response.third.component2() == null) {
-                if (response.second.statusCode == 401) {
-                    makeSnackbar(
-                        view,
-                        view.context.resources.getString(R.string.token_invalid)
-                    )
-                    pupils = null
-                    break
-                } else if (response.second.statusCode == 200) {
-                    kill = true
-                    pupils = response.third.component1()?.array()
-                    break
+        loop@ while (exceptions in 0..4 && !kill) {
+            var response: Triple<Request, Response, Result<FuelJson, FuelError>>
+            withContext(Dispatchers.IO) {
+                response =
+                    Fuel.get(userInfoApi).header(Headers.AUTHORIZATION, "Token $token")
+                        .timeout(150).awaitResponseResult(jsonDeserializer())
+            }
+            when (response.third) {
+                is Result.Success -> {
+                    return response.third.component1()?.array()
+                }
+                is Result.Failure -> {
+                    if (response.third.component2()?.exception is SSLHandshakeException) {
+                        Log.d(
+                            "findPupils",
+                            "Caught SSLException at findPupils, " + abs(4 - exceptions).toString() + " tries left"
+                        )
+                        exceptions++
+                        if (exceptions > 4) {
+                            throw SSLException("findPupils")
+                        }
+                        continue@loop
+                    } else if (response.third.component2()?.causedByInterruption == true) {
+                        Log.d("DEV", "Caught interruption at findPupils")
+                        if (exceptions > 2) {
+                            throw InterruptedIOException()
+                        }
+                    } else if (response.third.component2()?.exception is SocketTimeoutException) {
+                        Log.d("DEV", "Caught timeout at findPupils")
+                        throw TimeoutException()
+                    }
+                    Log.wtf("dev", response.third.component2()?.exception.toString())
+                    Log.wtf("dev", response.first.url.toString())
                 }
             }
             exceptions++
@@ -151,9 +173,54 @@ suspend fun findPupils(token: String, userID: String, view: View): JSONArray? {
             e.toString(),
             Color.parseColor("#B00020")
         )
+        Log.d("deb", e.toString())
     }
     return pupils
 
+}
+
+suspend fun getWeek(
+    userID: String,
+    preferences: SharedPreferences,
+    date: String
+): JSONObject {
+    val token = preferences.all["token"]
+    val apiString = "https://schools.by/subdomain-api/pupil/$userID/daybook/week/$date"
+    var exceptions = 0
+    loop@ while (exceptions in 0..4) {
+        val response = Fuel.get(apiString).header(Headers.AUTHORIZATION, "Token $token")
+            .timeout(150).awaitResponseResult(jsonDeserializer())
+        when (response.third) {
+            is Result.Success -> {
+                Log.d("dev", response.third.component1()?.obj().toString())
+                return response.third.component1()?.obj()!!
+            }
+            is Result.Failure -> {
+                if (response.third.component2()?.exception is SSLException) {
+                    Log.d(
+                        "summarySSL",
+                        "Caught SSLException at getWeek, trying again (" + abs(4 - exceptions) + " tries left)"
+                    )
+                    exceptions++
+                    if (exceptions > 4) {
+                        throw SSLException("Something wrong with SSL in getWeek")
+                    }
+                    continue@loop
+                } else if (response.third.component2()?.causedByInterruption == true) {
+                    exceptions++
+                    if (exceptions > 2)
+                        throw InterruptedIOException(response.third.component2()?.cause.toString())
+                } else if (response.third.component2()?.cause is SocketTimeoutException) {
+                    throw TimeoutException()
+                }
+            }
+        }
+        Log.d("dev", response.third.component2()?.cause.toString())
+        Log.wtf("dev", response.first.url.toString())
+        Log.d("dev", response.third.component1()?.obj().toString())
+        exceptions++
+    }
+    return JSONObject() //basically unreachable
 }
 
 fun isNetworkAvailable(context: Context): Boolean {

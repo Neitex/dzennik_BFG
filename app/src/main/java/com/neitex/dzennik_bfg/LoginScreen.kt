@@ -27,12 +27,12 @@ import java.net.SocketTimeoutException
 
 class LoginScreen : AppCompatActivity() {
     var loginField: com.google.android.material.textfield.TextInputEditText? = null
-    var passwordField: com.google.android.material.textfield.TextInputEditText? = null
+    private var passwordField: com.google.android.material.textfield.TextInputEditText? = null
     var logInButton: Button? = null
     var isLoginEntered = false
     var isPasswordEntered = false
-    val schools_auth_api = "https://schools.by/api/auth"
-    var Login_Token: String = "bruh"
+    private val schoolsAuthApi = "https://schools.by/api/auth"
+    var token: String = "bruh"
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,17 +41,17 @@ class LoginScreen : AppCompatActivity() {
         initFields()
     }
 
-    suspend fun Login() {
+    suspend fun login() {
         val authRequest = JSONObject()
         authRequest.put("username", loginField?.text)
         authRequest.put("password", passwordField?.text)
 
 
-        var Exceptions = 0
+        var exceptions = 0
         var kill = false
-        while (Exceptions in 0..3 && !kill) {
+        while (exceptions in 0..3 && !kill) {
             try {
-                Fuel.post(schools_auth_api).jsonBody(authRequest.toString())
+                Fuel.post(schoolsAuthApi).jsonBody(authRequest.toString())
                     .response { _, response, result ->
                         when (result) {
                             is Result.Failure -> {
@@ -65,20 +65,20 @@ class LoginScreen : AppCompatActivity() {
                                     loginField?.isActivated = true
                                     passwordField?.isActivated = true
                                     kill = true
-                                    Exceptions = -1337
+                                    exceptions = -1337
                                 } else if (result.getException() == SocketTimeoutException("SSL handshake timed out")) {
                                     makeSnackbar(
                                         findViewById(R.id.layout_bruh),
                                         getString(R.string.timeout),
                                         Color.parseColor("#B00020")
                                     )
-                                    Exceptions = -1337
+                                    exceptions = -1337
                                 }
                             }
                             is Result.Success -> {
-                                Login_Token = String(result.value)
+                                token = String(result.value)
                                 val preferences = this.getSharedPreferences("data", MODE_PRIVATE)
-                                val arr = JSONObject(Login_Token)
+                                val arr = JSONObject(token)
                                 preferences.edit().putString("token", arr.get("token").toString())
                                     .apply()
                                 makeSnackbar(
@@ -92,14 +92,14 @@ class LoginScreen : AppCompatActivity() {
                                     arr.getString("token"),
                                     this.findViewById(R.id.layout_bruh)
                                 )
-                                Exceptions = -2
+                                exceptions = -2
                             }
                         }
                     }.awaitResponseResult(jsonDeserializer())
                 if (kill) {
                     break
                 }
-                Exceptions++
+                exceptions++
             } catch (e: Exception) {
                 makeSnackbar(
                     findViewById(R.id.layout_bruh),
@@ -108,14 +108,14 @@ class LoginScreen : AppCompatActivity() {
                 )
             }
         }
-        if (Exceptions > 3) {
+        if (exceptions > 3) {
             makeSnackbar(
                 findViewById(R.id.layout_bruh),
                 getString(R.string.unknown_error),
                 Color.parseColor("#B00020")
             )
         }
-        if (Exceptions !in 0..3) {
+        if (exceptions !in 0..3) {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
@@ -124,9 +124,9 @@ class LoginScreen : AppCompatActivity() {
 
     private fun initFields() {
         loginField =
-            findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.login_field)
+            findViewById(R.id.login_field)
         passwordField =
-            findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.password_field)
+            findViewById(R.id.password_field)
         logInButton = findViewById(R.id.login_button)
         logInButton?.isEnabled = false
         loginField?.addTextChangedListener(object : TextWatcher {
@@ -175,7 +175,7 @@ class LoginScreen : AppCompatActivity() {
             ) {
                 passwordField?.hideKeyboard()
                 GlobalScope.launch(Dispatchers.Main) {
-                    Login()
+                    login()
                 }
                 return@OnKeyListener true
             }
@@ -207,7 +207,7 @@ class LoginScreen : AppCompatActivity() {
             loginField?.isActivated = false
             passwordField?.isActivated = false
             GlobalScope.launch(Dispatchers.IO) {
-                Login()
+                login()
             }
         }
     }
