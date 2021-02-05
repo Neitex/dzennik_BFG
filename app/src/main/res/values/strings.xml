@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Dzennik</string>
     <string name="main_page_name">Main page</string>
-    <string name="timetable_name">Timetable</string>
+    <string name="diary_name">Diary</string>
     <string name="login_field_hint">Login</string>
     <string name="password_field_hint">Password</string>
     <string name="long_login_error">Login should not exceed 30 characters.</string>
@@ -9,7 +9,7 @@
     <string name="wrong_auth">Server didn\'t accept your credentials. Check your login/password</string>
     <string name="ssl_handshake_error">An error occurred while trying to connect to server.</string>
     <string name="timeout">Server didn\'t respond. Try again later.</string>
-    <string name="unknown_error">An unknown error occured. Try checking your internet connection, or try again later</string>
+    <string name="unknown_error">An unknown error occurred. Try checking your internet connection, or try again later</string>
     <string name="login_failed" translatable="false">"Login failed"</string>
     <string name="settings_tab_name">Settings</string>
     <string name="token_invalid">Server didn\'t accept your token. You can get a new one by opening settings and re-logging in</string>
@@ -18,7 +18,7 @@
     <string name="today_lessons">Lessons you have today:</string>
     <string name="no_lessons_today">You have no lessons today. Have a rest :)</string>
     <string name="upcoming_lessons">"Hometask for "</string>
-    <string name="no_lessons_tommorow">You have no lessons tommorow. You can rest :)</string>
-    <string name="tommorow">tommorow</string>
+    <string name="no_lessons_tommorow">You have no lessons tomorrow. You can rest :)</string>
+    <string name="tomorrow">tomorrow</string>
     <string name="monday">monday</string>
 </resources>

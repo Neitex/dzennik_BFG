@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">"Дзённiк "</string>
     <string name="main_page_name">Главная страница</string>
-    <string name="timetable_name">Расписание</string>
+    <string name="diary_name">Дневник</string>
     <string name="login_field_hint">Логин</string>
     <string name="password_field_hint">Пароль</string>
     <string name="long_login_error">Логин не должен быть длинее 30 символов</string>
@@ -19,6 +19,6 @@
     <string name="no_lessons_today">У Вас нет уроков сегодня. Отдохните :)</string>
     <string name="upcoming_lessons">"Домашнее задание на "</string>
     <string name="no_lessons_tommorow">У Вас нет уроков завтра. Отдохните :)</string>
-    <string name="tommorow">завтра</string>
+    <string name="tomorrow">завтра</string>
     <string name="monday">понедельник</string>
 </resources>

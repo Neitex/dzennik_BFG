@@ -1,9 +1,9 @@
 package com.neitex.dzennik_bfg
 
 import android.content.SharedPreferences
+import android.content.res.Resources
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -13,20 +13,28 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
-import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import com.neitex.dzennik_bfg.fragments.ChangePupilsDialog
 import com.neitex.dzennik_bfg.fragments.SummaryPage
-import com.neitex.dzennik_bfg.fragments.changePupilsDialog
 import com.neitex.dzennik_bfg.shared_functions.findPupils
+import com.neitex.dzennik_bfg.shared_functions.getSummary
+import com.neitex.dzennik_bfg.shared_functions.getWeek
+import com.neitex.dzennik_bfg.shared_functions.makeSnackbar
 import kotlinx.coroutines.*
 import org.json.JSONArray
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeoutException
+import javax.net.ssl.SSLException
 
 
 private lateinit var preferences: SharedPreferences
 private lateinit var view: View
 private lateinit var pupilsArray: JSONArray
 private var pupilID: String = ""
+private lateinit var fileResources: Resources
 private lateinit var myFragmentManager: FragmentManager
 private lateinit var myLifecycle: Lifecycle
 
@@ -38,6 +46,7 @@ class MainScreen : AppCompatActivity() {
         preferences = this.getSharedPreferences("data", MODE_PRIVATE)
         val viewPager = findViewById<ViewPager2>(R.id.page_view)
         view = viewPager.rootView
+        fileResources = resources
 
 
         TextViewCompat.setAutoSizeTextTypeWithDefaults(
@@ -46,66 +55,135 @@ class MainScreen : AppCompatActivity() {
         )
         myFragmentManager = supportFragmentManager
         myLifecycle = lifecycle
-        val Tabs = findViewById<TabLayout>(R.id.menuTabs)
+        val tabs = findViewById<TabLayout>(R.id.menuTabs)
         supportFragmentManager
-        viewPager.adapter = ViewStateAdapter(supportFragmentManager, lifecycle, true)
-        TabLayoutMediator(Tabs, viewPager)
-        { tab, position ->
+        viewPager.adapter = ViewStateAdapter(supportFragmentManager, lifecycle, null)
+
+        TabLayoutMediator(tabs, viewPager)
+        { _, position ->
             viewPager.currentItem = position
         }.attach()
-        val TabsNames = arrayOf(
+        val tabsNames = arrayOf(
             getString(R.string.main_page_name),
-            getString(R.string.timetable_name),
+            getString(R.string.diary_name),
             getString(R.string.settings_tab_name)
         )
-        for (i in 0..Tabs.tabCount) {
-            Tabs.getTabAt(i)?.text = TabsNames[i]
+        for (i in 0..tabs.tabCount) {
+            tabs.getTabAt(i)?.text = tabsNames[i]
         }
-        Tabs.selectTab(Tabs.getTabAt(0))
-        loadDataAsync()
+        tabs.selectTab(tabs.getTabAt(0))
+        getBasicData().start()
     }
 
     class ViewStateAdapter(
         fragmentManager: FragmentManager,
         lifecycle: Lifecycle,
-        val isLoading: Boolean = false
+        private val weekData: JSONObject?
     ) :
         FragmentStateAdapter(fragmentManager, lifecycle) {
-        override fun createFragment(position: Int): Fragment {
-             when (position) {
-                 0 -> {
-                     if (!isLoading) {
-                         return SummaryPage(pupilID, preferences, view)
-                     } else return Fragment()
-                 }
-                 1 -> {
-                     if (!isLoading) {
-                         return SummaryPage(pupilID, preferences, view)
-                     } else return Fragment()
-                 }
-                 2 -> {
 
-                     if (!isLoading) {
-                         return SummaryPage(pupilID, preferences, view, 2)
-                     } else return Fragment()
-                 }
+        override fun createFragment(position: Int): Fragment {
+            when (position) {
+                0 -> {
+                    if (weekData != null) {
+                        val calendar = Calendar.getInstance()
+                        var isTommorow = true
+                        val currentDay = SimpleDateFormat(
+                            "yyyy-MM-dd",
+                            Locale.getDefault()
+                        ).format(calendar.time)
+                        calendar.roll(Calendar.DAY_OF_YEAR, 1)
+                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY){
+                            isTommorow = false
+                            calendar.roll(Calendar.DAY_OF_YEAR, 1)
+                        }
+                        val upcomingDay = SimpleDateFormat(
+                            "yyyy-MM-dd",
+                            Locale.getDefault()
+                        ).format(calendar.time)
+                        var summPage = SummaryPage()
+                        summPage.initFields(
+                            pupilID, preferences, view,
+                            weekData.getJSONObject(currentDay),
+                            weekData.getJSONObject(upcomingDay),
+                            isTommorow
+                        )
+                        return summPage
+                    } else return Fragment()
+                }
+                1 -> {
+                    if (weekData != null) {
+                        val calendar = Calendar.getInstance()
+                        var isTommorow = true
+                        val currentDay = SimpleDateFormat(
+                            "yyyy-MM-dd",
+                            Locale.getDefault()
+                        ).format(calendar.time)
+                        calendar.roll(Calendar.DAY_OF_YEAR, 1)
+                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY){
+                            isTommorow = false
+                            calendar.roll(Calendar.DAY_OF_YEAR, 1)
+                        }
+                        val upcomingDay = SimpleDateFormat(
+                            "yyyy-MM-dd",
+                            Locale.getDefault()
+                        ).format(calendar.time)
+                        var summPage = SummaryPage()
+                        summPage.initFields(
+                            pupilID, preferences, view,
+                            weekData.getJSONObject(currentDay),
+                            weekData.getJSONObject(upcomingDay),
+                            isTommorow
+                        )
+                        return summPage
+                    } else return Fragment()
+                }
+                2 -> {
+
+                    if (weekData != null) {
+                        val calendar = Calendar.getInstance()
+                        var isTommorow = true
+                        val currentDay = SimpleDateFormat(
+                            "yyyy-MM-dd",
+                            Locale.getDefault()
+                        ).format(calendar.time)
+                        calendar.roll(Calendar.DAY_OF_YEAR, 1)
+                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY){
+                            isTommorow = false
+                            calendar.roll(Calendar.DAY_OF_YEAR, 1)
+                        }
+                        val upcomingDay = SimpleDateFormat(
+                            "yyyy-MM-dd",
+                            Locale.getDefault()
+                        ).format(calendar.time)
+                        var summPage = SummaryPage()
+                        summPage.initFields(
+                            pupilID, preferences, view,
+                            weekData.getJSONObject(currentDay),
+                            weekData.getJSONObject(upcomingDay),
+                            isTommorow
+                        )
+                        return summPage
+                    } else return Fragment()
+                }
                 else -> {
                     throw RuntimeException("$position is outside of tabs range")
                 }
             }
         }
+
         override fun getItemCount(): Int {
             return 3
         }
     }
 
 
-    fun loadDataAsync() = GlobalScope.async(Dispatchers.Main) {
+    private fun getBasicData() = GlobalScope.async(Dispatchers.Main) {
         try {
             findViewById<ProgressBar>(R.id.progressBar2).visibility = ProgressBar.VISIBLE
-            withContext(Dispatchers.IO) {
-                if (preferences.all["user_type"] == "Parent") {
-                    var pupils =
+            if (preferences.all["user_type"] == "Parent") {
+                try {
+                    val pupils =
                         findPupils(
                             preferences.all["token"].toString(),
                             preferences.all["id"].toString(),
@@ -115,33 +193,86 @@ class MainScreen : AppCompatActivity() {
                         this@async.cancel()
                     } else
                         pupilsArray = pupils
-                } else if (preferences.all["user_type"] == "Pupil") {
-                    pupilID = preferences.all["id"].toString()
+                } catch (e: SSLException) {
+                    //TODO: Switch to offline mode
+                } catch (e: TimeoutException) {
+                    //TODO: Switch to offline mode
+                } catch (e: InterruptedException) {
+                    //TODO: Switch to offline mode
                 }
+            } else if (preferences.all["user_type"] == "Pupil") {
+                pupilID = preferences.all["id"].toString()
             }
-            if (preferences.all["user_type"] == "Parent")
+            if (preferences.all["user_type"] == "Parent") {
                 changePupil(0)
-            else if (preferences.all["user_type"] == "Pupil")
+            } else if (preferences.all["user_type"] == "Pupil") {
                 updateName()
+            }
         } catch (e: Exception) {
         } finally {
             findViewById<ProgressBar>(R.id.progressBar2).visibility = ProgressBar.GONE
         }
     }
 
+    fun updateName() {
+        view.findViewById<TextView>(R.id.pupilName).text =
+            preferences.all["last_name"].toString() + ' ' + preferences.all["first_name"].toString()
+        view.findViewById<ViewPager2>(R.id.page_view).adapter = null
+        view.findViewById<ViewPager2>(R.id.page_view).adapter =
+            ViewStateAdapter(myFragmentManager, myLifecycle, null)
+        TextViewCompat.setAutoSizeTextTypeWithDefaults(
+            view.findViewById(R.id.pupilName),
+            TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
+        )
+        GlobalScope.launch(Dispatchers.IO) {
+            updatePages(preferences.all["id"].toString())
+        }
+    }
 
 }
 
-fun updateName() {
-    view.findViewById<TextView>(R.id.pupilName).text =
-        preferences.all["last_name"].toString() + ' ' + preferences.all["first_name"].toString()
-    view.findViewById<ViewPager2>(R.id.page_view).adapter = null
-    view.findViewById<ViewPager2>(R.id.page_view).adapter =
-        MainScreen.ViewStateAdapter(myFragmentManager, myLifecycle, false)
-    TextViewCompat.setAutoSizeTextTypeWithDefaults(
-        view.findViewById(R.id.pupilName),
-        TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
-    )
+suspend fun updatePages(userID: String) {
+    var weekSummary = JSONObject()
+    try {
+        val calendar = Calendar.getInstance()
+        val currDayOfWeek = calendar[Calendar.DAY_OF_WEEK]
+        val currentDay = calendar[Calendar.DAY_OF_YEAR]
+        calendar.roll(Calendar.DAY_OF_YEAR, Calendar.MONDAY - calendar[Calendar.DAY_OF_WEEK])
+        val currentWeekMonday = SimpleDateFormat(
+            "yyyy-MM-dd",
+            Locale.getDefault()
+        ).format(calendar.time)
+        weekSummary = getWeek(userID, preferences, currentWeekMonday)
+        if (currDayOfWeek == Calendar.SUNDAY) {
+            val currentDayString = SimpleDateFormat(
+                "yyyy-MM-dd",
+                Locale.getDefault()
+            ).format(calendar.time)
+            weekSummary.accumulate(currentDayString, JSONObject())
+            weekSummary.getJSONObject(currentDayString).accumulate("lessons", JSONObject())
+            weekSummary.getJSONObject(currentDayString).accumulate("last_lesson_end_time", null)
+        }
+        if (currDayOfWeek == Calendar.SATURDAY){
+            calendar.roll(Calendar.DAY_OF_YEAR, 7)
+            val mondayDayString = SimpleDateFormat(
+                "yyyy-MM-dd",
+                Locale.getDefault()
+            ).format(calendar.time)
+            weekSummary.accumulate(mondayDayString, getSummary(userID, preferences, mondayDayString))
+        }
+        withContext(Dispatchers.Main) {
+            val pageView = view.findViewById<ViewPager2>(R.id.page_view)
+            pageView.adapter =
+                MainScreen.ViewStateAdapter(myFragmentManager, myLifecycle, weekSummary)
+            (pageView.adapter as MainScreen.ViewStateAdapter).notifyDataSetChanged()
+        }
+    } catch (e: TimeoutException) {
+        //TODO: Switch to offline mode
+        makeSnackbar(view, fileResources.getString(R.string.timeout))
+    } catch (e: SSLException) {
+        //TODO: Switch to offline mode
+        makeSnackbar(view, fileResources.getString(R.string.ssl_handshake_error))
+    }
 }
 
 
@@ -153,14 +284,11 @@ fun changePupil(newPupil: Int) {
     if (pupilsArray.getJSONObject(newPupil).getInt("id").toString() != pupilID) {
         if (pupilsArray.length() != 1) {
             view.findViewById<TextView>(R.id.pupilName).setOnClickListener {
-                val pupilsDialog = changePupilsDialog(pupilsArray)
+                val pupilsDialog = ChangePupilsDialog(pupilsArray)
                 pupilsDialog.show(myFragmentManager, pupilsDialog.tag)
             }
         }
         pupilID = pupilsArray.getJSONObject(newPupil).getInt("id").toString()
-        view.findViewById<ViewPager2>(R.id.page_view).adapter = null
-        view.findViewById<ViewPager2>(R.id.page_view).adapter =
-            MainScreen.ViewStateAdapter(myFragmentManager, myLifecycle, false)
         view.findViewById<TextView>(R.id.pupilName).text =
             pupilsArray.getJSONObject(newPupil)?.getString("last_name") + ' ' +
                     pupilsArray.getJSONObject(newPupil)?.getString("first_name")
@@ -168,5 +296,8 @@ fun changePupil(newPupil: Int) {
             view.findViewById(R.id.pupilName),
             TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
         )
+        GlobalScope.launch(Dispatchers.IO) {
+            updatePages(pupilID)
+        }
     }
 }
