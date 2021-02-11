@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View.OnKeyListener
 import android.widget.Button
@@ -12,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.awaitResponseResult
 import com.github.kittinunf.fuel.core.extensions.jsonBody
+import com.github.kittinunf.fuel.coroutines.awaitResponse
 import com.github.kittinunf.fuel.json.jsonDeserializer
 import com.github.kittinunf.result.Result
 import com.google.android.material.snackbar.Snackbar
@@ -21,19 +23,31 @@ import com.neitex.dzennik_bfg.shared_functions.saveAccountInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.InterruptedIOException
 import java.net.SocketTimeoutException
+import java.util.concurrent.TimeoutException
+import javax.net.ssl.SSLException
+import kotlin.math.abs
 
 
-class LoginScreen : AppCompatActivity() {
-    var loginField: com.google.android.material.textfield.TextInputEditText? = null
+class LoginActivity : AppCompatActivity() {
+    private var loginField: com.google.android.material.textfield.TextInputEditText? = null
     private var passwordField: com.google.android.material.textfield.TextInputEditText? = null
-    var logInButton: Button? = null
-    var isLoginEntered = false
-    var isPasswordEntered = false
+    private var logInButton: Button? = null
+    private var isLoginEntered = false
+    private var isPasswordEntered = false
     private val schoolsAuthApi = "https://schools.by/api/auth"
     var token: String = "bruh"
 
+    suspend fun setLoginState(state:Boolean){ //Sets login fields and buttons to input state
+        withContext(Dispatchers.Main) {
+            loginField?.isEnabled = state
+            passwordField?.isEnabled = state
+            logInButton?.isEnabled = state
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,80 +59,71 @@ class LoginScreen : AppCompatActivity() {
         val authRequest = JSONObject()
         authRequest.put("username", loginField?.text)
         authRequest.put("password", passwordField?.text)
-
-
+        setLoginState(false)
         var exceptions = 0
-        var kill = false
-        while (exceptions in 0..3 && !kill) {
-            try {
-                Fuel.post(schoolsAuthApi).jsonBody(authRequest.toString())
-                    .response { _, response, result ->
-                        when (result) {
-                            is Result.Failure -> {
-                                if (response.statusCode == 400) {
-                                    makeSnackbar(
-                                        findViewById(R.id.layout_bruh),
-                                        getString(R.string.wrong_auth),
-                                        Color.parseColor("#B00020")
-                                    )
-                                    logInButton?.isEnabled = true
-                                    loginField?.isActivated = true
-                                    passwordField?.isActivated = true
-                                    kill = true
-                                    exceptions = -1337
-                                } else if (result.getException() == SocketTimeoutException("SSL handshake timed out")) {
-                                    makeSnackbar(
-                                        findViewById(R.id.layout_bruh),
-                                        getString(R.string.timeout),
-                                        Color.parseColor("#B00020")
-                                    )
-                                    exceptions = -1337
-                                }
-                            }
-                            is Result.Success -> {
-                                token = String(result.value)
-                                val preferences = this.getSharedPreferences("data", MODE_PRIVATE)
-                                val arr = JSONObject(token)
-                                preferences.edit().putString("token", arr.get("token").toString())
-                                    .apply()
-                                makeSnackbar(
-                                    findViewById(R.id.layout_bruh),
-                                    getString(R.string.got_token) + ": " + arr.get("token")
-                                        .toString(),
-                                    resources.getColor(R.color.primaryDarkColor),
-                                    Snackbar.LENGTH_SHORT
-                                )
-                                saveAccountInfo(
-                                    arr.getString("token"),
-                                    this.findViewById(R.id.layout_bruh)
-                                )
-                                exceptions = -2
-                            }
+        var startIntent = false
+       loop@while (exceptions in 0..3) {
+            val response = Fuel.post(schoolsAuthApi).jsonBody(authRequest.toString()).timeout(150)
+                .awaitResponseResult(
+                jsonDeserializer())
+            when(response.third){
+                is Result.Failure ->{
+                    if (response.second.statusCode == 400){
+                        setLoginState(true)
+                        makeSnackbar(findViewById(R.id.layout_bruh),
+                        resources.getString(R.string.wrong_auth))
+                        break@loop
+                    }
+                    if (response.third.component2()?.exception is SSLException) {
+                        Log.e(
+                            "loginSSL",
+                            "Caught SSLException at login, trying again (" +( 4 - exceptions) + " tries left)"
+                        )
+                        exceptions++
+                        if (exceptions > 4) {
+                            break@loop
                         }
-                    }.awaitResponseResult(jsonDeserializer())
-                if (kill) {
-                    break
+                        continue@loop
+                    } else if (response.third.component2()?.cause is SocketTimeoutException) {
+                        if(exceptions>2) {
+                            makeSnackbar(
+                                findViewById(R.id.layout_bruh),
+                                resources.getString(R.string.timeout)
+                            )
+                            break@loop
+                        }
+                    }
                 }
-                exceptions++
-            } catch (e: Exception) {
-                makeSnackbar(
-                    findViewById(R.id.layout_bruh),
-                    e.toString(),
-                    Color.parseColor("#B00020")
-                )
+                is Result.Success ->{
+                    token = response.third.component1()?.obj().toString()
+                    val preferences = this.getSharedPreferences("data", MODE_PRIVATE)
+                    val arr = response.third.component1()?.obj()!!
+                    preferences.edit().putString("token", arr.get("token").toString())
+                        .apply()
+                    makeSnackbar(
+                        findViewById(R.id.layout_bruh),
+                        getString(R.string.got_token) + ": " + arr.get("token")
+                            .toString(),
+                        resources.getColor(R.color.primaryDarkColor),
+                        Snackbar.LENGTH_SHORT
+                    )
+                    Log.d("debug", "Got token: ${arr.getString("token")}")
+                    saveAccountInfo(
+                        arr.getString("token"),
+                        this.findViewById(R.id.layout_bruh)
+                    )
+                    startIntent = true
+                    break@loop
+                }
             }
+            exceptions++
         }
-        if (exceptions > 3) {
-            makeSnackbar(
-                findViewById(R.id.layout_bruh),
-                getString(R.string.unknown_error),
-                Color.parseColor("#B00020")
-            )
-        }
-        if (exceptions !in 0..3) {
+        if (startIntent) {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
+        } else {
+            setLoginState(true)
         }
     }
 
@@ -203,9 +208,6 @@ class LoginScreen : AppCompatActivity() {
         })
         logInButton?.setOnClickListener {
             it.hideKeyboard()
-            logInButton?.isEnabled = false
-            loginField?.isActivated = false
-            passwordField?.isActivated = false
             GlobalScope.launch(Dispatchers.IO) {
                 login()
             }
