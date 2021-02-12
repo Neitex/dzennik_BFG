@@ -21,4 +21,6 @@
     <string name="no_lessons_tommorow">You have no lessons tomorrow. You can rest :)</string>
     <string name="tomorrow">tomorrow</string>
     <string name="monday">monday</string>
+    <string name="timetable_name">Timetable</string>
+    <string name="last_page_name">Quarter marks</string>
 </resources>

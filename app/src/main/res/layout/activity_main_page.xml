@@ -8,14 +8,6 @@
     android:layout_height="match_parent"
     android:layout_gravity="fill_vertical">
 
-    <ProgressBar
-        android:id="@+id/progressBar2"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="40dp"
-        android:layout_marginBottom="30dp" />
-
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appbar"
 
@@ -67,7 +59,7 @@
         android:layout_width="match_parent"
 
 
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_marginBottom="20dp"
         android:fillViewport="true"
         app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
@@ -84,6 +76,14 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
+        <ProgressBar
+            android:id="@+id/progressBar2"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toTopOf="@+id/menuTabs"
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/menuTabs"
