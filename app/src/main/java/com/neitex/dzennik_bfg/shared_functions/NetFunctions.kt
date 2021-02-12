@@ -159,7 +159,8 @@ suspend fun findPupils(token: String, userID: String, view: View): JSONArray? {
                         }
                     } else if (response.third.component2()?.exception is SocketTimeoutException) {
                         Log.d("DEV", "Caught timeout at findPupils")
-                        throw TimeoutException()
+                        if (exceptions > 2)
+                            throw TimeoutException()
                     }
                     Log.wtf("dev", response.third.component2()?.exception.toString())
                     Log.wtf("dev", response.first.url.toString())

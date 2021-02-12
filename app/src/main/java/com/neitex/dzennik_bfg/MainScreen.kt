@@ -15,7 +15,10 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import com.jakewharton.threetenabp.AndroidThreeTen
 import com.neitex.dzennik_bfg.fragments.ChangePupilsDialog
+import com.neitex.dzennik_bfg.fragments.DiaryPage
+import com.neitex.dzennik_bfg.fragments.NotImplementedPage
 import com.neitex.dzennik_bfg.fragments.SummaryPage
 import com.neitex.dzennik_bfg.shared_functions.findPupils
 import com.neitex.dzennik_bfg.shared_functions.getSummary
@@ -24,6 +27,10 @@ import com.neitex.dzennik_bfg.shared_functions.makeSnackbar
 import kotlinx.coroutines.*
 import org.json.JSONArray
 import org.json.JSONObject
+import org.threeten.bp.DayOfWeek
+import org.threeten.bp.temporal.Temporal
+import org.threeten.bp.temporal.TemporalAdjuster
+import org.threeten.bp.temporal.TemporalAdjusters
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeoutException
@@ -47,8 +54,6 @@ class MainScreen : AppCompatActivity() {
         val viewPager = findViewById<ViewPager2>(R.id.page_view)
         view = viewPager.rootView
         fileResources = resources
-
-
         TextViewCompat.setAutoSizeTextTypeWithDefaults(
             findViewById(R.id.pupilName),
             TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
@@ -92,10 +97,10 @@ class MainScreen : AppCompatActivity() {
                             "yyyy-MM-dd",
                             Locale.getDefault()
                         ).format(calendar.time)
-                        calendar.roll(Calendar.DAY_OF_YEAR, 1)
-                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY){
+                        calendar.add(Calendar.DAY_OF_YEAR, 1)
+                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY) {
                             isTommorow = false
-                            calendar.roll(Calendar.DAY_OF_YEAR, 1)
+                            calendar.add(Calendar.DAY_OF_YEAR, 1)
                         }
                         val upcomingDay = SimpleDateFormat(
                             "yyyy-MM-dd",
@@ -103,8 +108,7 @@ class MainScreen : AppCompatActivity() {
                         ).format(calendar.time)
                         var summPage = SummaryPage()
                         summPage.initFields(
-                            pupilID, preferences, view,
-                            weekData.getJSONObject(currentDay),
+                            preferences, weekData.getJSONObject(currentDay),
                             weekData.getJSONObject(upcomingDay),
                             isTommorow
                         )
@@ -112,59 +116,19 @@ class MainScreen : AppCompatActivity() {
                     } else return Fragment()
                 }
                 1 -> {
-                    if (weekData != null) {
+                    if (weekData!=null) {
+                        val diary = DiaryPage()
                         val calendar = Calendar.getInstance()
-                        var isTommorow = true
-                        val currentDay = SimpleDateFormat(
-                            "yyyy-MM-dd",
-                            Locale.getDefault()
-                        ).format(calendar.time)
-                        calendar.roll(Calendar.DAY_OF_YEAR, 1)
-                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY){
-                            isTommorow = false
-                            calendar.roll(Calendar.DAY_OF_YEAR, 1)
-                        }
-                        val upcomingDay = SimpleDateFormat(
-                            "yyyy-MM-dd",
-                            Locale.getDefault()
-                        ).format(calendar.time)
-                        var summPage = SummaryPage()
-                        summPage.initFields(
-                            pupilID, preferences, view,
-                            weekData.getJSONObject(currentDay),
-                            weekData.getJSONObject(upcomingDay),
-                            isTommorow
-                        )
-                        return summPage
-                    } else return Fragment()
+                        val mondayDate = org.threeten.bp.LocalDate.ofYearDay(
+                            calendar[Calendar.YEAR],
+                            calendar[Calendar.DAY_OF_YEAR]
+                        ).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
+                        diary.initFields(pupilID, Pair(mondayDate, weekData), preferences)
+                        return diary
+                    } else return NotImplementedPage()
                 }
                 2 -> {
-
-                    if (weekData != null) {
-                        val calendar = Calendar.getInstance()
-                        var isTommorow = true
-                        val currentDay = SimpleDateFormat(
-                            "yyyy-MM-dd",
-                            Locale.getDefault()
-                        ).format(calendar.time)
-                        calendar.roll(Calendar.DAY_OF_YEAR, 1)
-                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY){
-                            isTommorow = false
-                            calendar.roll(Calendar.DAY_OF_YEAR, 1)
-                        }
-                        val upcomingDay = SimpleDateFormat(
-                            "yyyy-MM-dd",
-                            Locale.getDefault()
-                        ).format(calendar.time)
-                        var summPage = SummaryPage()
-                        summPage.initFields(
-                            pupilID, preferences, view,
-                            weekData.getJSONObject(currentDay),
-                            weekData.getJSONObject(upcomingDay),
-                            isTommorow
-                        )
-                        return summPage
-                    } else return Fragment()
+                    return NotImplementedPage()
                 }
                 else -> {
                     throw RuntimeException("$position is outside of tabs range")
@@ -181,8 +145,8 @@ class MainScreen : AppCompatActivity() {
     private fun getBasicData() = GlobalScope.async(Dispatchers.Main) {
         try {
             findViewById<ProgressBar>(R.id.progressBar2).visibility = ProgressBar.VISIBLE
-            if (preferences.all["user_type"] == "Parent") {
-                try {
+            try {
+                if (preferences.all["user_type"] == "Parent") {
                     val pupils =
                         findPupils(
                             preferences.all["token"].toString(),
@@ -193,20 +157,21 @@ class MainScreen : AppCompatActivity() {
                         this@async.cancel()
                     } else
                         pupilsArray = pupils
-                } catch (e: SSLException) {
-                    //TODO: Switch to offline mode
-                } catch (e: TimeoutException) {
-                    //TODO: Switch to offline mode
-                } catch (e: InterruptedException) {
-                    //TODO: Switch to offline mode
+
+                } else if (preferences.all["user_type"] == "Pupil") {
+                    pupilID = preferences.all["id"].toString()
                 }
-            } else if (preferences.all["user_type"] == "Pupil") {
-                pupilID = preferences.all["id"].toString()
-            }
-            if (preferences.all["user_type"] == "Parent") {
-                changePupil(0)
-            } else if (preferences.all["user_type"] == "Pupil") {
-                updateName()
+                if (preferences.all["user_type"] == "Parent") {
+                    changePupil(0)
+                } else if (preferences.all["user_type"] == "Pupil") {
+                    updateName()
+                }
+            } catch (e: SSLException) {
+                //TODO: Switch to offline mode
+            } catch (e: TimeoutException) {
+                //TODO: Switch to offline mode
+            } catch (e: InterruptedException) {
+                //TODO: Switch to offline mode
             }
         } catch (e: Exception) {
         } finally {
@@ -236,29 +201,24 @@ suspend fun updatePages(userID: String) {
     try {
         val calendar = Calendar.getInstance()
         val currDayOfWeek = calendar[Calendar.DAY_OF_WEEK]
-        val currentDay = calendar[Calendar.DAY_OF_YEAR]
-        calendar.roll(Calendar.DAY_OF_YEAR, Calendar.MONDAY - calendar[Calendar.DAY_OF_WEEK])
+        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY)
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+        calendar.add(Calendar.DAY_OF_YEAR, Calendar.MONDAY - calendar[Calendar.DAY_OF_WEEK])
         val currentWeekMonday = SimpleDateFormat(
             "yyyy-MM-dd",
             Locale.getDefault()
         ).format(calendar.time)
         weekSummary = getWeek(userID, preferences, currentWeekMonday)
-        if (currDayOfWeek == Calendar.SUNDAY) {
-            val currentDayString = SimpleDateFormat(
-                "yyyy-MM-dd",
-                Locale.getDefault()
-            ).format(calendar.time)
-            weekSummary.accumulate(currentDayString, JSONObject())
-            weekSummary.getJSONObject(currentDayString).accumulate("lessons", JSONObject())
-            weekSummary.getJSONObject(currentDayString).accumulate("last_lesson_end_time", null)
-        }
-        if (currDayOfWeek == Calendar.SATURDAY){
-            calendar.roll(Calendar.DAY_OF_YEAR, 7)
+        if (currDayOfWeek == Calendar.SUNDAY || currDayOfWeek == Calendar.SATURDAY) {
+            calendar.add(Calendar.DAY_OF_YEAR, 7)
             val mondayDayString = SimpleDateFormat(
                 "yyyy-MM-dd",
                 Locale.getDefault()
             ).format(calendar.time)
-            weekSummary.accumulate(mondayDayString, getSummary(userID, preferences, mondayDayString))
+            weekSummary.accumulate(
+                mondayDayString,
+                getSummary(userID, preferences, mondayDayString)
+            )
         }
         withContext(Dispatchers.Main) {
             val pageView = view.findViewById<ViewPager2>(R.id.page_view)

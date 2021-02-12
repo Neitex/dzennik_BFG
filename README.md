@@ -15,7 +15,3 @@ I've got those APIs from capturing calls from original Dzennik (Дзённiк) a
 
 # License
 Licensed under GPLv3. See LICENSE file.
-
-
-
-
