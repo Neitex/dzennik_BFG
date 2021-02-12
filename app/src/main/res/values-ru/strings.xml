@@ -21,4 +21,6 @@
     <string name="no_lessons_tommorow">У Вас нет уроков завтра. Отдохните :)</string>
     <string name="tomorrow">завтра</string>
     <string name="monday">понедельник</string>
+    <string name="timetable_name">Расписание</string>
+    <string name="last_page_name">Четвертные оценки</string>
 </resources>

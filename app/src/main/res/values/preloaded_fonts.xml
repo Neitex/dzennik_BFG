@@ -2,6 +2,8 @@
 <resources>
     <array name="preloaded_fonts" translatable="false">
         <item>@font/biryani_bold</item>
+        <item>@font/noto_sans</item>
+        <item>@font/roboto</item>
         <item>@font/roboto_bold</item>
         <item>@font/roboto_medium_italic</item>
         <item>@font/ubuntu_medium</item>
