@@ -1,11 +1,8 @@
 package com.neitex.dzennik_bfg.fragments
 
 import android.content.res.ColorStateList
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.graphics.Rect
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,14 +11,13 @@ import androidx.annotation.ColorInt
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.RecyclerView.ItemDecoration
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.neitex.dzennik_bfg.R
 import com.neitex.dzennik_bfg.shared_functions.DividerItemDecorator
-import com.neitex.dzennik_bfg.shared_functions.changePupilsAdapter
+import com.neitex.dzennik_bfg.shared_functions.ChangePupilsAdapter
 import org.json.JSONArray
 
-class changePupilsDialog(val pupilsArray: JSONArray) : BottomSheetDialogFragment() {
+class ChangePupilsDialog(private val pupilsArray: JSONArray) : BottomSheetDialogFragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -44,7 +40,7 @@ class changePupilsDialog(val pupilsArray: JSONArray) : BottomSheetDialogFragment
             LinearLayoutManager.VERTICAL,
             false
         )
-        pupilsList.adapter = changePupilsAdapter(pupilsArray, this.context?.obbDir, this)
+        pupilsList.adapter = ChangePupilsAdapter(pupilsArray, this)
         val beautifulDividerItemDecoration =
             DividerItemDecorator(resources.getDrawable(R.drawable.empty_divider))
 

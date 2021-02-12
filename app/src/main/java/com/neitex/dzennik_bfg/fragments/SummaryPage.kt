@@ -14,29 +14,22 @@ import com.neitex.dzennik_bfg.shared_functions.CurrentDayAdapter
 import com.neitex.dzennik_bfg.shared_functions.DividerItemDecorator
 import com.neitex.dzennik_bfg.shared_functions.Lesson
 import com.neitex.dzennik_bfg.shared_functions.UpcomingDayAdapter
-import io.sentry.Sentry
 import org.json.JSONObject
 
 
 class SummaryPage : Fragment() {
-    private var userID: String = null.toString()
     private lateinit var preferences: SharedPreferences
-    private lateinit var viewer: View
     private var currentDaySummary: JSONObject? = null
     private var upcomingDaySummary: JSONObject? = null
     private var isTommorow: Boolean = true
 
     fun initFields(
-        usrID: String,
         prefs: SharedPreferences,
-        view: View,
         currentSummary: JSONObject,
         upcomingSummary: JSONObject,
         tommorow: Boolean
     ) {
-        userID = usrID
         preferences = prefs
-        viewer = view
         currentDaySummary = currentSummary
         upcomingDaySummary = upcomingSummary
         isTommorow = tommorow
@@ -48,10 +41,6 @@ class SummaryPage : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        if (userID == null.toString()) {
-            Sentry.captureMessage("Created SummaryPage view without initializing userID")
-            throw Exception("Created SummaryPage view without initializing userID")
-        }
         val view = inflater.inflate(R.layout.summary_fragment, container, false)
         val currentDayBaseLayout =
             view.findViewById<RecyclerView>(R.id.currentDayRecyclerView)
@@ -75,7 +64,7 @@ class SummaryPage : Fragment() {
         if (isTommorow)
             view.findViewById<TextView>(R.id.upcomingDayLessons).text =
                 view.findViewById<TextView>(R.id.upcomingDayLessons).text.toString() + getString(
-                    R.string.tommorow
+                    R.string.tomorrow
                 ) + ':'
         else view.findViewById<TextView>(R.id.upcomingDayLessons).text =
             view.findViewById<TextView>(
@@ -85,7 +74,7 @@ class SummaryPage : Fragment() {
 
         //getting current day data ready
         var currentDayLessonsCount = 0
-        for (i in 1..9999999) { //считаем, сколько у нас уроков
+        for (i in 1..Int.MAX_VALUE) { //считаем, сколько у нас уроков
             if (currentDaySummary?.getJSONObject("lessons")?.has(i.toString()) == true) {
                 currentDayLessonsCount++
             } else {
@@ -110,7 +99,7 @@ class SummaryPage : Fragment() {
 
         //getting upcoming day data set ready
         var upcomingDayLessonsCount = 0
-        for (i in 1..9999999) {
+        for (i in 1..Int.MAX_VALUE) {
             if (upcomingDaySummary?.getJSONObject("lessons")?.has(i.toString()) == true) {
                 upcomingDayLessonsCount++
             } else {
