@@ -1,100 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
 
 
+    android:id="@+id/coordinatorLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_gravity="fill_vertical">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/appbar"
-
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/page_view"
         android:layout_width="match_parent"
-        android:layout_height="80dp">
+        android:layout_height="0dp"
+        android:focusable="false"
+        app:layout_constraintBottom_toTopOf="@+id/menuTabs"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_conversion_absoluteHeight="829dp"
+        tools:layout_conversion_absoluteWidth="411dp">
 
-        <com.google.android.material.appbar.CollapsingToolbarLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:contentScrim="?attr/colorPrimary"
-            app:layout_scrollFlags="scroll|enterAlways|enterAlwaysCollapsed"
+    </androidx.viewpager2.widget.ViewPager2>
 
-            app:toolbarId="@+id/toolbar">
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/menuTabs"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:layout_conversion_absoluteHeight="45dp"
+        tools:layout_conversion_absoluteWidth="411dp" />
 
-
-            <androidx.appcompat.widget.Toolbar
-                android:id="@+id/toolbar"
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"></androidx.appcompat.widget.Toolbar>
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <TextView
-                    android:id="@+id/pupilName"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginTop="16dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:fontFamily="@font/ubuntu_medium"
-                    android:maxLines="1"
-                    android:text="Петрожицкая Полина-зивяр"
-                    android:textColor="@color/primaryLightColor"
-                    app:autoSizeMaxTextSize="72sp"
-                    app:autoSizeMinTextSize="12sp"
-                    app:autoSizeTextType="uniform"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-        </com.google.android.material.appbar.CollapsingToolbarLayout>
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/nestedScrollView"
-        android:layout_width="match_parent"
+    <ProgressBar
+        android:id="@+id/progressBar2"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/menuTabs"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:layout_conversion_absoluteHeight="48dp"
+        tools:layout_conversion_absoluteWidth="48dp" />
 
 
-        android:layout_height="match_parent"
-        android:layout_marginBottom="20dp"
-        android:fillViewport="true"
-        app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
-
-        <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/page_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginBottom="20dp">
-
-        </androidx.viewpager2.widget.ViewPager2>
-    </androidx.core.widget.NestedScrollView>
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <ProgressBar
-            android:id="@+id/progressBar2"
-            style="?android:attr/progressBarStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@+id/menuTabs"
-            app:layout_constraintEnd_toEndOf="parent" />
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/menuTabs"
-            android:layout_width="0dp"
-            android:layout_height="45dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            tools:layout_conversion_absoluteHeight="45dp"
-            tools:layout_conversion_absoluteWidth="393dp" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

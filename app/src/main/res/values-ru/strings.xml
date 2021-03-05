@@ -23,4 +23,16 @@
     <string name="monday">понедельник</string>
     <string name="timetable_name">Расписание</string>
     <string name="last_page_name">Четвертные оценки</string>
+    <string name="token_login">Или, используйте токен</string>
+    <string name="get_shared_token_instructions_send">1. Вам нужно отправить этот файл держателю токена (человеку, который делится токеном).</string>
+    <string name="send_encryption_file">Поделиться файлом шифровки</string>
+    <string name="get_shared_token_instructions_recieve">2. После того, как вы получили файл с токеном (файл, который вы получили от держателя токена), выберите его ниже.</string>
+    <string name="select_token_file">Выбрать файл с токеном</string>
+    <string name="apply_token">Применить токен</string>
+    <string name="invalid_shared_token_file">Выбранный файл не является действительным файлом токена.</string>
+    <string name="invalid_shared_token">Сервер не принял токен. Попросите держателя токена пересоздать файл токена.</string>
+    <string name="token_successfully_unencrypted">Токен успешно получен и расшифрован! Теперь вы можете его применить,</string>
+    <string name="send_encryption_intent_name">Отправить файл ключа шифровки в</string>
+    <string name="error_occured">Мы извиняемся, но что-то пошло сильно не по плану. Разработчик приложения, скорее всего, уже уведомлён об ошибке. Пожалуйста, попробуйте перезапустить приложение.</string>
+    <string name="error_info_for_developer">Вот немного информации для разработчика: \n</string>
 </resources>

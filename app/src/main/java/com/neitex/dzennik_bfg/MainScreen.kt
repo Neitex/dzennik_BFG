@@ -3,6 +3,7 @@ package com.neitex.dzennik_bfg
 import android.content.SharedPreferences
 import android.content.res.Resources
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -13,24 +14,19 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.facebook.drawee.backends.pipeline.Fresco
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
-import com.jakewharton.threetenabp.AndroidThreeTen
-import com.neitex.dzennik_bfg.fragments.ChangePupilsDialog
-import com.neitex.dzennik_bfg.fragments.DiaryPage
-import com.neitex.dzennik_bfg.fragments.NotImplementedPage
-import com.neitex.dzennik_bfg.fragments.SummaryPage
-import com.neitex.dzennik_bfg.shared_functions.findPupils
-import com.neitex.dzennik_bfg.shared_functions.getSummary
-import com.neitex.dzennik_bfg.shared_functions.getWeek
-import com.neitex.dzennik_bfg.shared_functions.makeSnackbar
+import com.neitex.dzennik_bfg.fragments.*
+import com.neitex.dzennik_bfg.shared_functions.*
+import io.sentry.Sentry
 import kotlinx.coroutines.*
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import org.threeten.bp.DayOfWeek
-import org.threeten.bp.temporal.Temporal
-import org.threeten.bp.temporal.TemporalAdjuster
 import org.threeten.bp.temporal.TemporalAdjusters
+import java.io.InterruptedIOException
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeoutException
@@ -39,8 +35,9 @@ import javax.net.ssl.SSLException
 
 private lateinit var preferences: SharedPreferences
 private lateinit var view: View
-private lateinit var pupilsArray: JSONArray
-private var pupilID: String = ""
+private var pupilsArray: JSONArray? = null
+private var pupilID = -1
+private var pupilIDString: String = ""
 private lateinit var fileResources: Resources
 private lateinit var myFragmentManager: FragmentManager
 private lateinit var myLifecycle: Lifecycle
@@ -48,22 +45,19 @@ private lateinit var myLifecycle: Lifecycle
 
 class MainScreen : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        Fresco.initialize(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main_page)
         preferences = this.getSharedPreferences("data", MODE_PRIVATE)
         val viewPager = findViewById<ViewPager2>(R.id.page_view)
         view = viewPager.rootView
         fileResources = resources
-        TextViewCompat.setAutoSizeTextTypeWithDefaults(
-            findViewById(R.id.pupilName),
-            TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
-        )
         myFragmentManager = supportFragmentManager
         myLifecycle = lifecycle
         val tabs = findViewById<TabLayout>(R.id.menuTabs)
         supportFragmentManager
         viewPager.adapter = ViewStateAdapter(supportFragmentManager, lifecycle, null)
-
+        viewPager.offscreenPageLimit = 4
         TabLayoutMediator(tabs, viewPager)
         { _, position ->
             viewPager.currentItem = position
@@ -78,6 +72,7 @@ class MainScreen : AppCompatActivity() {
         }
         tabs.selectTab(tabs.getTabAt(0))
         getBasicData().start()
+        viewPager.isUserInputEnabled = false
     }
 
     class ViewStateAdapter(
@@ -93,42 +88,64 @@ class MainScreen : AppCompatActivity() {
                     if (weekData != null) {
                         val calendar = Calendar.getInstance()
                         var isTommorow = true
-                        val currentDay = SimpleDateFormat(
-                            "yyyy-MM-dd",
-                            Locale.getDefault()
-                        ).format(calendar.time)
-                        calendar.add(Calendar.DAY_OF_YEAR, 1)
-                        if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY) {
-                            isTommorow = false
+                        try {
+                            val currentDay = SimpleDateFormat(
+                                "yyyy-MM-dd",
+                                Locale.getDefault()
+                            ).format(calendar.time)
                             calendar.add(Calendar.DAY_OF_YEAR, 1)
+                            if (calendar[Calendar.DAY_OF_WEEK] == Calendar.SUNDAY) {
+                                isTommorow = false
+                                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                            }
+                            val upcomingDay = SimpleDateFormat(
+                                "yyyy-MM-dd",
+                                Locale.getDefault()
+                            ).format(calendar.time)
+                            var summPage = SummaryPage()
+                            val bundle = Bundle()
+
+                            bundle.putString(
+                                "currentDay",
+                                weekData.getJSONObject(currentDay).toString()
+                            )
+                            bundle.putString(
+                                "upcomingDay",
+                                weekData.getJSONObject(upcomingDay).toString()
+                            )
+                            bundle.putBoolean("isTomorrow", isTommorow)
+                            summPage.arguments = bundle
+                            return summPage
+                        } catch (e: JSONException) {
+                            Sentry.addBreadcrumb("JSON", weekData.toString())
+                            Sentry.captureException(e)
+                            return ErrorFragment(e)
                         }
-                        val upcomingDay = SimpleDateFormat(
-                            "yyyy-MM-dd",
-                            Locale.getDefault()
-                        ).format(calendar.time)
-                        var summPage = SummaryPage()
-                        summPage.initFields(
-                            preferences, weekData.getJSONObject(currentDay),
-                            weekData.getJSONObject(upcomingDay),
-                            isTommorow
-                        )
-                        return summPage
                     } else return Fragment()
                 }
                 1 -> {
-                    if (weekData!=null) {
+                    if (weekData != null) {
                         val diary = DiaryPage()
                         val calendar = Calendar.getInstance()
                         val mondayDate = org.threeten.bp.LocalDate.ofYearDay(
                             calendar[Calendar.YEAR],
                             calendar[Calendar.DAY_OF_YEAR]
                         ).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
-                        diary.initFields(pupilID, Pair(mondayDate, weekData), preferences)
+                        var userID = ""
+                        if (preferences.all["user_type"] == "Parent") {
+                            userID = pupilsArray?.getJSONObject(pupilID)?.getInt("id").toString()
+                        } else {
+                            userID = preferences.all["id"].toString()
+                        }
+                        val bundle = Bundle()
+                        bundle.putString("userID", userID)
+                        bundle.putString("currWeek", Pair(mondayDate, weekData).toString())
+                        diary.arguments = bundle
                         return diary
-                    } else return NotImplementedPage()
+                    } else return ErrorFragment(null)
                 }
                 2 -> {
-                    return NotImplementedPage()
+                    return ErrorFragment(null)
                 }
                 else -> {
                     throw RuntimeException("$position is outside of tabs range")
@@ -153,24 +170,39 @@ class MainScreen : AppCompatActivity() {
                             preferences.all["id"].toString(),
                             view
                         )
+                    Log.d("Got pupils", pupils.toString())
                     if (pupils == null) {
+                        Log.d("cum","cum cum")
                         this@async.cancel()
-                    } else
-                        pupilsArray = pupils
+                    } else {
+                        pupilsArray = filterPupils(pupils, preferences)
+                        Log.d("Filtered", "cum" + pupilsArray.toString())
+                    }
 
                 } else if (preferences.all["user_type"] == "Pupil") {
-                    pupilID = preferences.all["id"].toString()
+                    pupilIDString = preferences.all["id"].toString()
                 }
-                if (preferences.all["user_type"] == "Parent") {
-                    changePupil(0)
-                } else if (preferences.all["user_type"] == "Pupil") {
-                    updateName()
+                when (preferences.all["user_type"]) {
+                    "Parent" -> {
+                        changePupil(0)
+                    }
+                    "Pupil" -> {
+                        withContext(Dispatchers.IO) {
+                            updatePages(preferences.all["id"].toString())
+                        }
+                    }
+                    else -> {
+                        Sentry.captureException(IllegalArgumentException("Unknown user type"))
+                    }
                 }
             } catch (e: SSLException) {
+                Log.d("ssl", "cum")
                 //TODO: Switch to offline mode
             } catch (e: TimeoutException) {
+                Log.d("tmt", "cum")
                 //TODO: Switch to offline mode
-            } catch (e: InterruptedException) {
+            } catch (e: InterruptedIOException) {
+                Log.d("iio", "cum")
                 //TODO: Switch to offline mode
             }
         } catch (e: Exception) {
@@ -179,21 +211,70 @@ class MainScreen : AppCompatActivity() {
         }
     }
 
-    fun updateName() {
-        view.findViewById<TextView>(R.id.pupilName).text =
-            preferences.all["last_name"].toString() + ' ' + preferences.all["first_name"].toString()
-        view.findViewById<ViewPager2>(R.id.page_view).adapter = null
-        view.findViewById<ViewPager2>(R.id.page_view).adapter =
-            ViewStateAdapter(myFragmentManager, myLifecycle, null)
-        TextViewCompat.setAutoSizeTextTypeWithDefaults(
-            view.findViewById(R.id.pupilName),
-            TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
-        )
-        GlobalScope.launch(Dispatchers.IO) {
-            updatePages(preferences.all["id"].toString())
+}
+
+fun getName(id: Int): String =
+    pupilsArray?.getJSONObject(id)?.getString("last_name") + ' ' + pupilsArray?.getJSONObject(id)
+        ?.getString("first_name")
+
+fun getUserID(id: Int): String {
+    if (id == -1) {
+        return preferences.all["id"].toString()
+    } else {
+        return pupilsArray?.getJSONObject(id)?.getString("id").toString()
+    }
+}
+
+suspend fun getAvatar(): String? {
+    val id = pupilID
+    if (pupilsArray == null) {
+        val userInfo = getUserInfo(getUserID(id), preferences.all["token"].toString())
+        try {
+            val str = userInfo.get("photo")
+                .toString()
+            if (str == null.toString()) {
+                return null
+            } else {
+                return str
+            }
+        } catch (e: InterruptedIOException) {
+            return null
+        } catch (e: TimeoutException) {
+            return null
+        } catch (e: JSONException) {
+            Sentry.addBreadcrumb("No value for photo", userInfo.toString())
+            Sentry.captureException(e)
+            return null
+        }
+    } else {
+        val str = pupilsArray?.getJSONObject(id)?.get("photo").toString()
+        if (str == null.toString()) {
+            return null
+        } else {
+            return str
         }
     }
+}
 
+fun updateNameText(textView: TextView) {
+    if (preferences.all["user_type"] == "Pupil") {
+        textView.text =
+            preferences.all["last_name"].toString() + ' ' + preferences.all["first_name"].toString()
+    } else {
+        textView.text = getName(pupilID)
+        if (pupilsArray != null) {
+            if (pupilsArray!!.length() > 1) {
+                textView.setOnClickListener {
+                    val pupilsDialog = ChangePupilsDialog(pupilsArray!!)
+                    pupilsDialog.show(myFragmentManager, pupilsDialog.tag)
+                }
+            }
+        }
+    }
+    TextViewCompat.setAutoSizeTextTypeWithDefaults(
+        textView,
+        TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
+    )
 }
 
 suspend fun updatePages(userID: String) {
@@ -208,7 +289,7 @@ suspend fun updatePages(userID: String) {
             "yyyy-MM-dd",
             Locale.getDefault()
         ).format(calendar.time)
-        weekSummary = getWeek(userID, preferences, currentWeekMonday)
+        weekSummary = getWeek(userID, preferences.all["token"].toString(), currentWeekMonday)
         if (currDayOfWeek == Calendar.SUNDAY || currDayOfWeek == Calendar.SATURDAY) {
             calendar.add(Calendar.DAY_OF_YEAR, 7)
             val mondayDayString = SimpleDateFormat(
@@ -224,7 +305,6 @@ suspend fun updatePages(userID: String) {
             val pageView = view.findViewById<ViewPager2>(R.id.page_view)
             pageView.adapter =
                 MainScreen.ViewStateAdapter(myFragmentManager, myLifecycle, weekSummary)
-            (pageView.adapter as MainScreen.ViewStateAdapter).notifyDataSetChanged()
         }
     } catch (e: TimeoutException) {
         //TODO: Switch to offline mode
@@ -237,27 +317,17 @@ suspend fun updatePages(userID: String) {
 
 
 fun changePupil(newPupil: Int) {
-    if (newPupil >= pupilsArray.length()) {
-        throw IllegalArgumentException("$newPupil (newPupil) is bigger than pupilsArray size (${pupilsArray.length()})")
-    }
-
-    if (pupilsArray.getJSONObject(newPupil).getInt("id").toString() != pupilID) {
-        if (pupilsArray.length() != 1) {
-            view.findViewById<TextView>(R.id.pupilName).setOnClickListener {
-                val pupilsDialog = ChangePupilsDialog(pupilsArray)
-                pupilsDialog.show(myFragmentManager, pupilsDialog.tag)
-            }
+    val pupilsArrayNow = pupilsArray
+    if (pupilsArrayNow != null) {
+        if (newPupil >= pupilsArrayNow.length()) {
+            throw IllegalArgumentException("$newPupil (newPupil) is bigger than pupilsArrayNow size (${pupilsArrayNow.length()})")
         }
-        pupilID = pupilsArray.getJSONObject(newPupil).getInt("id").toString()
-        view.findViewById<TextView>(R.id.pupilName).text =
-            pupilsArray.getJSONObject(newPupil)?.getString("last_name") + ' ' +
-                    pupilsArray.getJSONObject(newPupil)?.getString("first_name")
-        TextViewCompat.setAutoSizeTextTypeWithDefaults(
-            view.findViewById(R.id.pupilName),
-            TextViewCompat.AUTO_SIZE_TEXT_TYPE_UNIFORM
-        )
-        GlobalScope.launch(Dispatchers.IO) {
-            updatePages(pupilID)
+
+        if (newPupil != pupilID) {
+            pupilID = newPupil
+            GlobalScope.launch(Dispatchers.IO) {
+                updatePages(getUserID(newPupil))
+            }
         }
     }
 }

@@ -23,4 +23,16 @@
     <string name="monday">monday</string>
     <string name="timetable_name">Timetable</string>
     <string name="last_page_name">Quarter marks</string>
+    <string name="token_login">Or, use token share</string>
+    <string name="get_shared_token_instructions_send">1. You need to send this file to token holder (person, that sharing token).</string>
+    <string name="send_encryption_file">Share encryption file</string>
+    <string name="get_shared_token_instructions_recieve">2. After you got encrypted token (file, that token holder sent to you), you need to select it down here.</string>
+    <string name="select_token_file">Select token file</string>
+    <string name="apply_token">Apply token</string>
+    <string name="invalid_shared_token_file">Input file is not valid token file.</string>
+    <string name="invalid_shared_token">Server didn\'t accept this shared token. Ask token holder to recreate token file.</string>
+    <string name="token_successfully_unencrypted">Token is successfully unencrypted! You can now apply it.</string>
+    <string name="send_encryption_intent_name">Send encryption file to</string>
+    <string name="error_occured">We are sorry, but some unrecoverable error occured. Developer of the app was notified about this. Please, try to restart the app.</string>
+    <string name="error_info_for_developer">Here is some information for developer: \n</string>
 </resources>

@@ -11,7 +11,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val preferences = this.getSharedPreferences("data", MODE_PRIVATE)
-        Fresco.initialize(this)
         AndroidThreeTen.init(this)
         preferences.edit().apply()
         if (!preferences.contains("token")) {

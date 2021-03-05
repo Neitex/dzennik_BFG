@@ -1,7 +1,7 @@
 package com.neitex.dzennik_bfg.shared_functions
 
-import android.content.res.Resources
 import android.net.Uri
+import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -19,6 +19,7 @@ import com.facebook.drawee.view.SimpleDraweeView
 import com.neitex.dzennik_bfg.R
 import com.neitex.dzennik_bfg.changePupil
 import com.neitex.dzennik_bfg.fragments.ChangePupilsDialog
+import com.neitex.dzennik_bfg.fragments.NotImplementedPage
 import com.neitex.dzennik_bfg.fragments.diary_fragments.WeekSummary
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,14 +27,33 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class Lesson(
-    val lessonName: String? = "aaaaa",
+    val lessonName: String? = null,
     val lessonMark: String? = null,
     val lessonHometask: String? = null
-)
+){
+    override fun toString(): String {
+        var str = "["
+        str+="{lessonName : ${lessonName.toString()}},"
+        str+="{lessonMark : ${lessonMark.toString()}},"
+        str+="{lessonHometask : ${lessonHometask.toString()}}"
+        str+=']'
+        return str
+    }
+}
+
+
 data class Day(
     val date: String,
     val lessons: JSONObject
-)
+){
+    override fun toString(): String {
+        var str ="["
+        str+="{date : $date},"
+        str+="{lessons: ${lessons.toString()}}"
+        str+=']'
+        return str
+    }
+}
 
 class CurrentDayAdapter(private val dataSet: Array<Lesson?>?, private val noLessons: String) :
     RecyclerView.Adapter<CurrentDayAdapter.ViewHolder>() {
@@ -194,10 +214,10 @@ class ChangePupilsAdapter(
 
 class WeekPageAdapter(
     fragmentManager: FragmentManager,
-    private val liveData: MutableLiveData<MutableMap<String, JSONObject>>
+    val isMarksAllowed: Boolean
 ) : FragmentPagerAdapter(
     fragmentManager,
-    BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT
+    BEHAVIOR_SET_USER_VISIBLE_HINT
 ) {
     private val zeroPosition = Int.MAX_VALUE / 2
     override fun getCount(): Int {
@@ -209,21 +229,26 @@ class WeekPageAdapter(
     }
 
     private fun getFragmentBasedOnPosition(position: Int): Fragment {
-        val weekSumm = WeekSummary()
-        weekSumm.initFields(liveData, position-zeroPosition)
-        return weekSumm
+            val weekSumm = WeekSummary()
+            val bundle = Bundle()
+            bundle.putInt("position", position - zeroPosition)
+            bundle.putBoolean("isMarksAllowed", isMarksAllowed)
+            weekSumm.arguments = bundle
+            return weekSumm
     }
 }
 
-class WeekDaysAdapter(val dataSet: Array<Day>?,
-val locale: Locale):RecyclerView.Adapter<WeekDaysAdapter.ViewHolder>(){
+class WeekDaysAdapter(
+    val dataSet: Array<Day>?,
+    val locale: Locale
+) : RecyclerView.Adapter<WeekDaysAdapter.ViewHolder>() {
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val dayName: TextView
-       val dayDiaryRecycler : RecyclerView
+        val dayDiaryRecycler: RecyclerView
 
         init {
             dayName = view.findViewById(R.id.dayDiaryName)
-           dayDiaryRecycler = view.findViewById(R.id.dayDiaryRecycler)
+            dayDiaryRecycler = view.findViewById(R.id.dayDiaryRecycler)
         }
     }
 
@@ -237,24 +262,32 @@ val locale: Locale):RecyclerView.Adapter<WeekDaysAdapter.ViewHolder>(){
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-        if(dataSet!=null) {
+        if (dataSet != null) {
             val dayDate = SimpleDateFormat("yyyy-MM-dd").parse(dataSet[position].date)
             val dayName = viewHolder.dayName
             dayName.text = SimpleDateFormat("EEEE, dd MMMM", locale).format(dayDate)
 
-            val lessonsArray = arrayOfNulls<Lesson>(dataSet[position].lessons.length())
-            Log.d("dev", "Processing: " + dataSet[position].lessons.toString())
-            for (i in 1..dataSet[position].lessons.length()) {
-                lessonsArray[i-1] = Lesson(
-                    dataSet[position].lessons.getJSONObject(i.toString())
-                        .getString("subject_short"),
-                    dataSet[position].lessons.getJSONObject(i.toString()).get("mark").toString()
-                )
+            var lessonsArray = emptyArray<Lesson>()
+            for (i in 0..dataSet[position].lessons.length()+1) {
+                if(dataSet[position].lessons.has(i.toString())) {
+                    lessonsArray += Lesson(
+                        dataSet[position].lessons.getJSONObject(i.toString())
+                            .getString("subject_short"),
+                        dataSet[position].lessons.getJSONObject(i.toString()).get("mark").toString()
+                    )
+                }
             }
             viewHolder.dayDiaryRecycler.layoutManager =
                 LinearLayoutManager(viewHolder.dayDiaryRecycler.context)
-            viewHolder.dayDiaryRecycler.adapter = WeekdayLessonsAdapter(lessonsArray.requireNoNulls())
-            viewHolder.dayDiaryRecycler.addItemDecoration(DividerItemDecorator(viewHolder.dayDiaryRecycler.context.resources.getDrawable(R.drawable.gray_divider)))
+            viewHolder.dayDiaryRecycler.adapter =
+                WeekdayLessonsAdapter(lessonsArray)
+            viewHolder.dayDiaryRecycler.addItemDecoration(
+                DividerItemDecorator(
+                    viewHolder.dayDiaryRecycler.context.resources.getDrawable(
+                        R.drawable.gray_divider
+                    )
+                )
+            )
         } else {
             viewHolder.dayDiaryRecycler.layoutManager =
                 LinearLayoutManager(viewHolder.dayDiaryRecycler.context)
@@ -295,7 +328,7 @@ class WeekdayLessonsAdapter(val dataSet: Array<Lesson>?) :
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-        if(dataSet != null) {
+        if (dataSet != null) {
             viewHolder.lessonNameTextView.text = dataSet[position].lessonName
             if (dataSet[position].lessonMark.toString() == null.toString()) {
                 viewHolder.lessonMarkTextView.text = ""
@@ -308,8 +341,8 @@ class WeekdayLessonsAdapter(val dataSet: Array<Lesson>?) :
     }
 
     override fun getItemCount(): Int {
-       if(dataSet == null){
-           return 0
-       } else return dataSet.size
+        if (dataSet == null) {
+            return 0
+        } else return dataSet.size
     }
 }

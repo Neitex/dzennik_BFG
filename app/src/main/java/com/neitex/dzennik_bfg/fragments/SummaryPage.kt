@@ -1,40 +1,33 @@
 package com.neitex.dzennik_bfg.fragments
 
-import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.facebook.drawee.view.SimpleDraweeView
 import com.neitex.dzennik_bfg.R
-import com.neitex.dzennik_bfg.shared_functions.CurrentDayAdapter
-import com.neitex.dzennik_bfg.shared_functions.DividerItemDecorator
-import com.neitex.dzennik_bfg.shared_functions.Lesson
-import com.neitex.dzennik_bfg.shared_functions.UpcomingDayAdapter
+import com.neitex.dzennik_bfg.getAvatar
+import com.neitex.dzennik_bfg.shared_functions.*
+import com.neitex.dzennik_bfg.updateNameText
+import io.sentry.Sentry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 
 class SummaryPage : Fragment() {
-    private lateinit var preferences: SharedPreferences
     private var currentDaySummary: JSONObject? = null
     private var upcomingDaySummary: JSONObject? = null
     private var isTommorow: Boolean = true
-
-    fun initFields(
-        prefs: SharedPreferences,
-        currentSummary: JSONObject,
-        upcomingSummary: JSONObject,
-        tommorow: Boolean
-    ) {
-        preferences = prefs
-        currentDaySummary = currentSummary
-        upcomingDaySummary = upcomingSummary
-        isTommorow = tommorow
-    }
-
+    private var isMarksAllowed = true
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,18 +35,27 @@ class SummaryPage : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.summary_fragment, container, false)
-        val currentDayBaseLayout =
-            view.findViewById<RecyclerView>(R.id.currentDayRecyclerView)
-        currentDayBaseLayout.layoutManager =
-            LinearLayoutManager(view.context, LinearLayoutManager.VERTICAL, false)
-        currentDayBaseLayout.adapter = CurrentDayAdapter(null, "")
-        currentDayBaseLayout.addItemDecoration(DividerItemDecorator(resources.getDrawable(R.drawable.gray_divider)))
-        val upcomingDayBaseLayout = view.findViewById<RecyclerView>(R.id.upcomingDayRecyclerView)
-        upcomingDayBaseLayout.layoutManager =
-            LinearLayoutManager(view.context, LinearLayoutManager.VERTICAL, false)
-        upcomingDayBaseLayout.adapter = UpcomingDayAdapter(null, "")
-        upcomingDayBaseLayout.addItemDecoration(DividerItemDecorator(resources.getDrawable(R.drawable.gray_divider)))
-
+        if (arguments != null) {
+            currentDaySummary = JSONObject(arguments?.getString("currentDay").toString())
+            upcomingDaySummary = JSONObject(arguments?.getString("upcomingDay").toString())
+            isTommorow = arguments?.getBoolean("isTomorrow") == true
+            val currentDayBaseLayout =
+                view.findViewById<RecyclerView>(R.id.currentDayRecyclerView)
+            currentDayBaseLayout.layoutManager =
+                LinearLayoutManager(view.context, LinearLayoutManager.VERTICAL, false)
+            currentDayBaseLayout.adapter = CurrentDayAdapter(null, "")
+            currentDayBaseLayout.addItemDecoration(DividerItemDecorator(resources.getDrawable(R.drawable.gray_divider)))
+            val upcomingDayBaseLayout =
+                view.findViewById<RecyclerView>(R.id.upcomingDayRecyclerView)
+            upcomingDayBaseLayout.layoutManager =
+                LinearLayoutManager(view.context, LinearLayoutManager.VERTICAL, false)
+            upcomingDayBaseLayout.adapter = UpcomingDayAdapter(null, "")
+            upcomingDayBaseLayout.addItemDecoration(DividerItemDecorator(resources.getDrawable(R.drawable.gray_divider)))
+            isMarksAllowed = arguments?.getBoolean("isMarksAllowed") ?: true
+        } else {
+            Sentry.captureMessage("Initialized summaryPage without bundle")
+            throw Exception("Initialized summaryPage without bundle")
+        }
         return view
     }
 
@@ -93,7 +95,7 @@ class SummaryPage : Fragment() {
                         currentDaySummary?.getJSONObject("lessons")
                             ?.getJSONObject(i.toString())?.getString("mark")
                     )
-                currentDayDataSet[i - 1] = temp
+                currentDayDataSet[i - 1] = filterLessonData(temp, isMarksAllowed)
             }
         }
 
@@ -127,7 +129,7 @@ class SummaryPage : Fragment() {
                 hometask
 
             )
-            upcomingDayDataSet[i - 1] = temp
+            upcomingDayDataSet[i - 1] = filterLessonData(temp, isMarksAllowed)
         }
 
         //sending our data to render
@@ -142,5 +144,26 @@ class SummaryPage : Fragment() {
                 upcomingDayDataSet,
                 resources.getString(R.string.no_lessons_tommorow)
             )
+        GlobalScope.launch(Dispatchers.IO) {
+            val avatarURL = getAvatar()
+            if (avatarURL != null) {
+                withContext(Dispatchers.Main) {
+                    view.findViewById<SimpleDraweeView>(R.id.summaryPupilAvatar)
+                        .setImageURI(Uri.parse(avatarURL))
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    view.findViewById<SimpleDraweeView>(R.id.summaryPupilAvatar).layoutParams = ConstraintLayout.LayoutParams(0,0)
+
+
+
+                    view.findViewById<SimpleDraweeView>(R.id.summaryPupilAvatar)
+                        .setImageBitmap(null)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                updateNameText(view.findViewById(R.id.pupilName))
+            }
+        }
     }
 }

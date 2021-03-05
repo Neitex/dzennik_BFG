@@ -8,5 +8,6 @@
     <style name="TransparentBottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
         <item name="android:background">@android:color/transparent</item>
     </style>
-
+    <attr name="nameTextColor" format="color"/>
+    <attr name="appBarColor" format="color"/>
 </resources>

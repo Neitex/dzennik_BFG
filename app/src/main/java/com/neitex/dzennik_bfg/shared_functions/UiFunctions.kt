@@ -1,11 +1,15 @@
 package com.neitex.dzennik_bfg.shared_functions
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.neitex.dzennik_bfg.R
@@ -64,4 +68,9 @@ class DividerItemDecorator(private val mDivider: Drawable) : RecyclerView.ItemDe
             outRect.setEmpty()
         } else outRect[0, 0, 0] = mDivider.intrinsicHeight
     }
+}
+
+fun saveSharedTokenSettings(preferences: SharedPreferences, sharedSettings: Map<String, Boolean>){
+    preferences.edit().putBoolean("isShared", true).apply()
+    //TODO: ADD SETTINGS SAVING
 }
